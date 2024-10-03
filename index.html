@@ -223,7 +223,8 @@
 
             configSections.forEach(section => {
                 const configId = section.id;
-                configs[configId] = {
+                const configName = document.getElementById(`${configId}-name`).value || ''
+                configs[configName] = {
                     name: document.getElementById(`${configId}-name`).value || '',
                     min_price: parseFloat(document.getElementById(`${configId}-min-price`).value) || 0,
                     politic: document.getElementById(`${configId}-politic`).value,
