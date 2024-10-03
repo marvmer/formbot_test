@@ -255,10 +255,11 @@
 
         window.addEventListener('load', () => {
             const initData = Telegram.WebApp.initDataUnsafe;
-            alert(initData)
-            alert(initData.configs)
-            alert(toString(initData))
-            alert(toString(initData.configs))
+            alert(JSON.stringify(initData, null, 4));
+            alert(initData);
+            alert(initData.configs);
+            alert(toString(initData));
+            alert(toString(initData.configs));
             // const urlParams = new URLSearchParams(window.location.search);
             // const configs = urlParams.get('configs');
             // if (configs) {
