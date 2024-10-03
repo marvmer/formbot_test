@@ -245,12 +245,27 @@
             Telegram.WebApp.sendData(JSON.stringify(data));
         }
 
+        // window.addEventListener('load', () => {
+        //     const initData = Telegram.WebApp.initDataUnsafe;
+        //     if (initData && initData.query_id) {
+        //         const jsonData = JSON.parse(initData.query_id);
+        //         Object.keys(jsonData).forEach(config => addConfig(jsonData[config], config));
+        //     }
+        // });
+
         window.addEventListener('load', () => {
             const initData = Telegram.WebApp.initDataUnsafe;
-            if (initData && initData.query_id) {
-                const jsonData = JSON.parse(initData.query_id);
-                Object.keys(jsonData).forEach(config => addConfig(jsonData[config], config));
-            }
+            alert(initData)
+            // const urlParams = new URLSearchParams(window.location.search);
+            // const configs = urlParams.get('configs');
+            // if (configs) {
+            //     try {
+            //         const jsonData = JSON.parse(decodeURIComponent(configs));
+            //         Object.keys(jsonData).forEach(config => addConfig(jsonData[config], config));
+            //     } catch (e) {
+            //         console.error("Ошибка при парсинге JSON данных", e);
+            //     }
+            // }
         });
     </script>
 </body>
