@@ -137,6 +137,10 @@
                             <option value="relative" ${configData.delta?.type === 'relative' ? 'selected' : ''}>Относительное (в процентах)</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label for="${configId}-my-link">Ссылка на вашу карточку</label>
+                        <input type="text" id="${configId}-my-link" value="${configData.my_link || ''}" onchange="validateUrl(this)">
+                    </div>
                     <div class="tracked-links-section">
                         <div class="tracked-links-header" onclick="toggleTrackedLinks('${configId}')">
                             <span>Отслеживаемые ссылки</span>
@@ -225,9 +229,10 @@
                     politic: document.getElementById(`${configId}-politic`).value,
                     delta: {
                         value: parseFloat(document.getElementById(`${configId}-delta-value`).value) || 0,
-                        type: document.getElementById(`${configId}-delta-type`).value
+                        type: document.getElementById(`${configId}-delta-type`).value,
                     },
-                    'tracked links': Array.from(document.getElementById(`${configId}-tracked-links-list`).children).map(linkDiv => linkDiv.querySelector('input').value.trim())
+                    my_link: document.getElementById(`${configId}-my-link`).value,
+                    'tracked links': Array.from(document.getElementById(`${configId}-tracked-links-list`).children).map(div => div.querySelector('input').value.trim())
                 };
             });
 
