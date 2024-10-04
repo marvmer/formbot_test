@@ -3,274 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram WebApp Анкета</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: auto;
-        }
-
-        .config-section {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-bottom: 15px;
-            position: relative;
-        }
-
-        .config-header, .tracked-links-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            background-color: #f0f0f0;
-            padding: 10px;
-        }
-
-        .config-content, .tracked-links-content {
-            display: none;
-            padding-top: 10px;
-        }
-
-        .form-group {
-            margin-bottom: 10px;
-        }
-
-        label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        input[type="text"],
-        input[type="number"],
-        select {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-        }
-
-        .tracked-links-list {
-            margin-bottom: 10px;
-        }
-
-        button {
-            margin-top: 10px;
-            padding: 8px 12px;
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            cursor: pointer;
-        }
-
-        button.add-config {
-            margin-top: 15px;
-            background-color: #28a745;
-        }
-
-        button.remove-config, button.remove-link {
-            background-color: #dc3545;
-        }
-
-        .config-name {
-            font-weight: bold;
-        }
-
-        @media (max-width: 600px) {
-            .container {
-                width: 100%;
-            }
-        }
-    </style>
+    <title>WB BOT</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div id="config-container"></div>
-        <button class="add-config" onclick="addConfig()">Добавить конфигурацию</button>
-        <button onclick="sendDataToBot()">Сохранить и отправить данные боту</button>
-    </div>
+    <h1>WB BOT</h1>
+    <h2>Мои конфигурации</h2>
+    <button id="addConfigBtn">Добавить конфигурацию</button>
+    <button id="sendConfigsBtn">Отправить конфигурации</button>
+    <div id="configurations"></div>
 
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        function addConfig(configData = {}, configName = '') {
-            const container = document.getElementById('config-container');
-            const configId = configName || `config${Date.now()}`;
+        const themeParams = Telegram.WebApp.themeParams;
+        document.body.style.backgroundColor = themeParams.bg_color || "#000";
+        document.body.style.color = themeParams.text_color || "#FFF";
+        Telegram.WebApp.setBackgroundColor(themeParams.bottom_bar_color || "#000");
 
+        const CloudStorage = (function() {
+            var cloudStorage = {};
+
+            function invokeStorageMethod(method, params, callback) {
+                invokeCustomMethod(method, params, callback);
+            }
+
+            cloudStorage.setItem = function(key, value, callback) {
+                return invokeStorageMethod('saveStorageValue', {key: key, value: value}, callback);
+            };
+            cloudStorage.getItem = function(key, callback) {
+                return cloudStorage.getItems([key], callback ? function(err, res) {
+                    if (err) callback(err);
+                    else callback(null, res[key]);
+                } : null);
+            };
+            cloudStorage.getItems = function(keys, callback) {
+                return invokeStorageMethod('getStorageValues', {keys: keys}, callback);
+            };
+            cloudStorage.removeItem = function(key, callback) {
+                return cloudStorage.removeItems([key], callback);
+            };
+            cloudStorage.removeItems = function(keys, callback) {
+                return invokeStorageMethod('deleteStorageValues', {keys: keys}, callback);
+            };
+            cloudStorage.getKeys = function(callback) {
+                return invokeStorageMethod('getStorageKeys', {}, callback);
+            };
+            return cloudStorage;
+        })();
+
+        const configurations = [];
+        let configCount = 0;
+
+        document.getElementById('addConfigBtn').addEventListener('click', () => {
+            configCount++;
             const configDiv = document.createElement('div');
-            configDiv.className = 'config-section';
-            configDiv.id = configId;
-
+            configDiv.id = `config_${configCount}`;
             configDiv.innerHTML = `
-                <div class="config-header" onclick="toggleConfig('${configId}')">
-                    <span class="config-name">${configName || 'Новая конфигурация'}</span>
-                    <button class="remove-config" onclick="removeConfig(event, '${configId}')">Удалить конфигурацию</button>
-                </div>
-                <div class="config-content">
-                    <div class="form-group">
-                        <label for="${configId}-name">Название конфигурации</label>
-                        <input type="text" id="${configId}-name" value="${configName || ''}" onchange="updateConfigName('${configId}')">
-                    </div>
-                    <div class="form-group">
-                        <label for="${configId}-min-price">Минимальная цена</label>
-                        <input type="number" step="0.01" id="${configId}-min-price" value="${configData.min_price || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label for="${configId}-politic">Тип изменения</label>
-                        <select id="${configId}-politic">
-                            <option value="up" ${configData.politic === 'up' ? 'selected' : ''}>Повышение</option>
-                            <option value="down" ${configData.politic === 'down' ? 'selected' : ''}>Понижение</option>
-                            <option value="repeat" ${configData.politic === 'repeat' ? 'selected' : ''}>Без изменений</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="${configId}-delta-value">Значение изменения</label>
-                        <input type="number" step="0.01" id="${configId}-delta-value" value="${configData.delta?.value || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label for="${configId}-delta-type">Тип значения</label>
-                        <select id="${configId}-delta-type">
-                            <option value="absolute" ${configData.delta?.type === 'absolute' ? 'selected' : ''}>Абсолютное</option>
-                            <option value="relative" ${configData.delta?.type === 'relative' ? 'selected' : ''}>Относительное (в процентах)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="${configId}-my-link">Ссылка на вашу карточку</label>
-                        <input type="text" id="${configId}-my-link" value="${configData.my_link || ''}" onchange="validateUrl(this)">
-                    </div>
-                    <div class="tracked-links-section">
-                        <div class="tracked-links-header" onclick="toggleTrackedLinks('${configId}')">
-                            <span>Отслеживаемые ссылки</span>
-                        </div>
-                        <div class="tracked-links-content">
-                            <div id="${configId}-tracked-links-list" class="tracked-links-list">
-                                ${(configData['tracked links'] || []).map((link, index) => `
-                                    <div class="form-group" id="${configId}-link-${index}">
-                                        <input type="text" value="${link}" onchange="validateUrl(this)">
-                                        <button class="remove-link" onclick="removeLink(event, '${configId}-link-${index}')">Удалить ссылку</button>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <button onclick="addLink('${configId}')">Добавить ссылку</button>
-                        </div>
-                    </div>
-                </div>
+                <input type="text" placeholder="Мой товар" id="product_${configCount}">
+                <input type="text" placeholder="URL1" id="url1_${configCount}">
+                <input type="text" placeholder="URL2" id="url2_${configCount}">
+                <input type="text" placeholder="URL3" id="url3_${configCount}">
+                <input type="text" placeholder="Скидка" id="discount_${configCount}">
+                <input type="text" placeholder="Минимальная цена" id="minPrice_${configCount}">
+                <select id="action_${configCount}">
+                    <option value="Up">Up</option>
+                    <option value="Down">Down</option>
+                    <option value="Repeat">Repeat</option>
+                </select>
+                <button onclick="deleteConfig(${configCount})">Удалить конфигурацию</button>
             `;
+            document.getElementById('configurations').appendChild(configDiv);
+        });
 
-            container.appendChild(configDiv);
-        }
+        function deleteConfig(id) {
+            const keys = [
+                `product_${id}`,
+                `url1_${id}`,
+                `url2_${id}`,
+                `url3_${id}`,
+                `discount_${id}`,
+                `minPrice_${id}`,
+                `action_${id}`
+            ];
 
-        function removeConfig(event, configId) {
-            event.stopPropagation();
-            const configDiv = document.getElementById(configId);
-            configDiv.parentNode.removeChild(configDiv);
-        }
-
-        function toggleConfig(configId) {
-            const configContent = document.getElementById(configId).querySelector('.config-content');
-            configContent.style.display = configContent.style.display === 'none' ? 'block' : 'none';
-        }
-
-        function toggleTrackedLinks(configId) {
-            const trackedLinksContent = document.getElementById(configId).querySelector('.tracked-links-content');
-            trackedLinksContent.style.display = trackedLinksContent.style.display === 'none' ? 'block' : 'none';
-        }
-
-        function updateConfigName(configId) {
-            const configNameInput = document.getElementById(`${configId}-name`);
-            const configHeader = document.getElementById(configId).querySelector('.config-name');
-            configHeader.textContent = configNameInput.value || 'Новая конфигурация';
-        }
-
-        function addLink(configId) {
-            const trackedLinksList = document.getElementById(`${configId}-tracked-links-list`);
-            const linkIndex = Date.now();
-
-            const linkDiv = document.createElement('div');
-            linkDiv.className = 'form-group';
-            linkDiv.id = `${configId}-link-${linkIndex}`;
-
-            linkDiv.innerHTML = `
-                <input type="text" placeholder="Введите URL" onchange="validateUrl(this)">
-                <button class="remove-link" onclick="removeLink(event, '${configId}-link-${linkIndex}')">Удалить ссылку</button>
-            `;
-
-            trackedLinksList.appendChild(linkDiv);
-        }
-
-        function removeLink(event, linkId) {
-            event.stopPropagation();
-            const linkDiv = document.getElementById(linkId);
-            linkDiv.parentNode.removeChild(linkDiv);
-        }
-
-        function validateUrl(input) {
-            const urlPattern = /^(https?:\/\/)?([\w\-]+(\.[\w\-]+)+)([\w.,@?^=%&:/~+#\-]*[\w@?^=%&/~+#\-])?$/;
-            if (!urlPattern.test(input.value)) {
-                alert('Пожалуйста, введите правильный URL');
-                input.style.borderColor = 'red';
-            } else {
-                input.style.borderColor = '';
+            if (confirm('Вы уверены, что хотите удалить эту конфигурацию?')) {
+                keys.forEach(key => {
+                    CloudStorage.removeItem(key);
+                });
+                document.getElementById(`config_${id}`).remove();
             }
         }
 
-        function getDataFromForm() {
-            const configs = {};
-            const configSections = document.querySelectorAll('.config-section');
-
-            configSections.forEach(section => {
-                const configId = section.id;
-                const configName = document.getElementById(`${configId}-name`).value || ''
-                configs[configName] = {
-                    name: document.getElementById(`${configId}-name`).value || '',
-                    min_price: parseFloat(document.getElementById(`${configId}-min-price`).value) || 0,
-                    politic: document.getElementById(`${configId}-politic`).value,
-                    delta: {
-                        value: parseFloat(document.getElementById(`${configId}-delta-value`).value) || 0,
-                        type: document.getElementById(`${configId}-delta-type`).value,
-                    },
-                    my_link: document.getElementById(`${configId}-my-link`).value,
-                    'tracked links': Array.from(document.getElementById(`${configId}-tracked-links-list`).children).map(div => div.querySelector('input').value.trim())
+        document.getElementById('sendConfigsBtn').addEventListener('click', () => {
+            const allConfigs = [];
+            for (let i = 1; i <= configCount; i++) {
+                const config = {
+                    product: document.getElementById(`product_${i}`).value,
+                    url1: document.getElementById(`url1_${i}`).value,
+                    url2: document.getElementById(`url2_${i}`).value,
+                    url3: document.getElementById(`url3_${i}`).value,
+                    discount: document.getElementById(`discount_${i}`).value,
+                    minPrice: document.getElementById(`minPrice_${i}`).value,
+                    action: document.getElementById(`action_${i}`).value,
                 };
-            });
-
-            return configs;
-        }
-
-        function sendDataToBot() {
-            const data = getDataFromForm();
-            Telegram.WebApp.sendData(JSON.stringify(data));
-        }
-
-        // window.addEventListener('load', () => {
-        //     const initData = Telegram.WebApp.initDataUnsafe;
-        //     if (initData && initData.query_id) {
-        //         const jsonData = JSON.parse(initData.query_id);
-        //         Object.keys(jsonData).forEach(config => addConfig(jsonData[config], config));
-        //     }
-        // });
-
-        window.addEventListener('load', () => {
-            const initData = Telegram.WebApp.initDataUnsafe;
-            alert(JSON.stringify(initData, null, 4));
-            alert(initData);
-            alert(initData.configs);
-            alert(toString(initData));
-            alert(toString(initData.configs));
-            // const urlParams = new URLSearchParams(window.location.search);
-            // const configs = urlParams.get('configs');
-            // if (configs) {
-            //     try {
-            //         const jsonData = JSON.parse(decodeURIComponent(configs));
-            //         Object.keys(jsonData).forEach(config => addConfig(jsonData[config], config));
-            //     } catch (e) {
-            //         console.error("Ошибка при парсинге JSON данных", e);
-            //     }
-            // }
+                allConfigs.push(config);
+            }
+            // Здесь можно отправить allConfigs на сервер или в Telegram
+            console.log('Конфигурации отправлены:', allConfigs);
         });
+
+        function loadConfigs() {
+            CloudStorage.getKeys(keys => {
+                keys.forEach(key => {
+                    CloudStorage.getItem(key, (err, value) => {
+                        if (!err) {
+                            // Здесь можно восстановить значения в интерфейсе
+                            console.log(`Ключ: ${key}, Значение: ${value}`);
+                        }
+                    });
+                });
+            });
+        }
+
+        window.onload = loadConfigs;
     </script>
 </body>
 </html>
